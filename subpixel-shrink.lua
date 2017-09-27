@@ -13,8 +13,9 @@ local function load_image(filename)
   local data = file:read("a")
   file:close()
   local _, pos, dim_x, dim_y, depth = data:find("^P3%s+(%d+)%s+(%d+)%s+(%d+)")
-  assert(depth == "255")
-  dim_x, dim_y = each(math.tointeger, dim_x, dim_y)
+  depth, dim_x, dim_y = each(math.tointeger, depth, dim_x, dim_y)
+  depth = depth+1
+  local multiplier = 256//depth
   pos = pos+1
   local result = {w = dim_x, h = dim_y}
   for j = 1, result.h do
@@ -23,7 +24,7 @@ local function load_image(filename)
       local nextpos
       _, nextpos, result[j][i] = data:find("(%d+)", pos)
       nextpos = nextpos+1
-      result[j][i] = math.tointeger(result[j][i])
+      result[j][i] = multiplier * math.tointeger(result[j][i])
       pos = nextpos
     end
   end
