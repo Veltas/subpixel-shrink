@@ -1,3 +1,5 @@
+#!/usr/bin/env lua
+
 local function each(fn, ...)
   local t = table.pack(...)
   for i = 1, t.n do
@@ -7,20 +9,22 @@ local function each(fn, ...)
 end
 
 local function load_image(filename)
-  local it = io.lines(filename)
-  assert(it() == "P3")
-  local dim_x, dim_y = each(math.tointeger, it():match("(%d+)%s+(%d+)"))
-  assert(math.tointeger(it():match("(%d+)")) == 255)
+  local file = assert(io.open(filename))
+  local data = file:read("a")
+  file:close()
+  local _, pos, dim_x, dim_y, depth = data:find("^P3%s+(%d+)%s+(%d+)%s+(%d+)")
+  assert(depth == "255")
+  dim_x, dim_y = each(math.tointeger, dim_x, dim_y)
+  pos = pos+1
   local result = {w = dim_x, h = dim_y}
   for j = 1, result.h do
     result[j] = {}
-    local line = it()
-    local pos = 1
     for i = 1, 3*result.w do
-      local patt = "(%d+)"
-      local next_pos = select(2, line:find(patt, pos)) + 1
-      pos[j][i] = assert(math.tointeger(line:match(patt, pos)))
-      pos = next_pos
+      local nextpos
+      _, nextpos, result[j][i] = data:find("(%d+)", pos)
+      nextpos = nextpos+1
+      result[j][i] = math.tointeger(result[j][i])
+      pos = nextpos
     end
   end
   return result
@@ -34,6 +38,7 @@ local function unpack_list(list, sep)
       result = result..sep..list[i]
     end
   end
+  return result
 end
 
 local function save_image(image, filename)
@@ -43,7 +48,7 @@ local function save_image(image, filename)
     math.tointeger(image.w).." "..math.tointeger(image.h)..
     "\n255\n"
   )
-  for row in ipairs(image) do
+  for _, row in ipairs(image) do
     out:write(unpack_list(row, " ").."\n")
   end
 end
@@ -56,17 +61,17 @@ local function avg_downscale(image)
       result[j][3*i-2] = (
         image[3*j-2][9*i-8] + image[3*j-2][9*i-5] + image[3*j-2][9*i-2] +
         image[3*j-1][9*i-8] + image[3*j-1][9*i-5] + image[3*j-1][9*i-2] +
-        image[3*j  ][9*i-8] + image[3*j  ][9*i-5] + image[3*j  ][9*i-2] +
+        image[3*j  ][9*i-8] + image[3*j  ][9*i-5] + image[3*j  ][9*i-2]
       ) // 9
       result[j][3*i-1] = (
         image[3*j-2][9*i-7] + image[3*j-2][9*i-4] + image[3*j-2][9*i-1] +
         image[3*j-1][9*i-7] + image[3*j-1][9*i-4] + image[3*j-1][9*i-1] +
-        image[3*j  ][9*i-7] + image[3*j  ][9*i-4] + image[3*j  ][9*i-1] +
+        image[3*j  ][9*i-7] + image[3*j  ][9*i-4] + image[3*j  ][9*i-1]
       ) // 9
       result[j][3*i  ] = (
         image[3*j-2][9*i-6] + image[3*j-2][9*i-3] + image[3*j-2][9*i  ] +
         image[3*j-1][9*i-6] + image[3*j-1][9*i-3] + image[3*j-1][9*i  ] +
-        image[3*j  ][9*i-6] + image[3*j  ][9*i-3] + image[3*j  ][9*i  ] +
+        image[3*j  ][9*i-6] + image[3*j  ][9*i-3] + image[3*j  ][9*i  ]
       ) // 9
     end
   end
@@ -81,17 +86,17 @@ local function sp_avg_downscale(image)
       result[j][3*i-2] = (
         image[3*j-2][9*i-8] +
         image[3*j-1][9*i-8] +
-        image[3*j  ][9*i-8] +
+        image[3*j  ][9*i-8]
       ) // 3
       result[j][3*i-1] = (
         image[3*j-2][9*i-4] +
         image[3*j-1][9*i-4] +
-        image[3*j  ][9*i-4] +
+        image[3*j  ][9*i-4]
       ) // 3
       result[j][3*i  ] = (
         image[3*j-2][9*i  ] +
         image[3*j-1][9*i  ] +
-        image[3*j  ][9*i  ] +
+        image[3*j  ][9*i  ]
       ) // 3
     end
   end
